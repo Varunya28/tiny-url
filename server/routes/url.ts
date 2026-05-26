@@ -7,35 +7,41 @@ const router = Router();
 // Create a shortened URL
 router.post("/shorten", async (req: Request, res: Response): Promise<any> => {
   try {
-    const { originalUrl, alias, password, expiresAt } = req.body;
+    let { originalUrl, alias, password, expiresAt } = req.body;
 
     if (!originalUrl) {
       return res.status(400).json({ error: "Original URL is required" });
     }
 
-    // Validate and format URL
-    let formattedUrl = originalUrl.trim();
-    if (!/^https?:\/\//i.test(formattedUrl)) {
-      formattedUrl = "https://" + formattedUrl;
+    originalUrl = originalUrl.trim();
+
+    // Prepend protocol if missing
+    if (!/^https?:\/\//i.test(originalUrl)) {
+      originalUrl = "https://" + originalUrl;
     }
 
+    // Validate URL format
     try {
-      new URL(formattedUrl);
-    } catch (e) {
+      new URL(originalUrl);
+    } catch (err) {
       return res.status(400).json({ error: "Invalid URL format" });
     }
 
     let shortCode = alias ? alias.trim().replace(/\s+/g, "-") : nanoid(6);
 
-    if (alias) {
-      const existingAlias = await Url.findOne({ shortCode });
-      if (existingAlias) {
+    // Check if shortCode already exists
+    const existingCode = await Url.findOne({ shortCode });
+    if (existingCode) {
+      if (alias) {
         return res.status(400).json({ error: "This custom alias is already taken" });
+      } else {
+        // If random nanoid collided, generate a new one
+        shortCode = nanoid(6);
       }
     }
 
     const newUrl = new Url({
-      originalUrl: formattedUrl,
+      originalUrl,
       shortCode,
       alias: alias || undefined,
       password: password || undefined,
