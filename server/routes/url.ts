@@ -13,6 +13,18 @@ router.post("/shorten", async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({ error: "Original URL is required" });
     }
 
+    // Validate and format URL
+    let formattedUrl = originalUrl.trim();
+    if (!/^https?:\/\//i.test(formattedUrl)) {
+      formattedUrl = "https://" + formattedUrl;
+    }
+
+    try {
+      new URL(formattedUrl);
+    } catch (e) {
+      return res.status(400).json({ error: "Invalid URL format" });
+    }
+
     let shortCode = alias ? alias.trim().replace(/\s+/g, "-") : nanoid(6);
 
     if (alias) {
@@ -23,7 +35,7 @@ router.post("/shorten", async (req: Request, res: Response): Promise<any> => {
     }
 
     const newUrl = new Url({
-      originalUrl,
+      originalUrl: formattedUrl,
       shortCode,
       alias: alias || undefined,
       password: password || undefined,
